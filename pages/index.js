@@ -167,7 +167,6 @@ export default function Home() {
     const newUrl = `${window.location.origin}${window.location.pathname}?state=${enc}`
 
     await router.push(`/?state=${enc}`, undefined, { shallow: true })
-    copyToClipboard(newUrl)
     setBusy(false)
   }
 
@@ -270,7 +269,7 @@ export default function Home() {
                         const enc = router.query.state
                         if (!enc) return
                         const curUrl = `${window.location.origin}${window.location.pathname}?state=${enc}`
-                        copyToClipboard(curUrl)
+                        copyToClipboard(curUrl) // Manual copy to clipboard
                       }}>Copy current link</button>
                       <span style={{ marginLeft: 10, opacity:0.8 }}>{copied ? 'Link copied!' : 'Click to copy current link'}</span>
                     </div>
