@@ -208,7 +208,7 @@ export default function Home() {
           boxShadow: '0 6px 30px rgba(16,24,40,0.18)',
         }}
       >
-        <h1 style={{fontSize: 28}}>Best-dressed theme — anonymous draw</h1>
+        <h1 style={{fontSize: 28}}>Best-dressed theme - Sports</h1>
 
         {isHostMode ? (
           <section style={{ marginTop: 20, padding: 12, border: '1px solid #eee', borderRadius: 8 }}>
@@ -224,7 +224,7 @@ export default function Home() {
           </section>
         ) : (
           <section style={{ marginTop: 20, padding: 12, border: '1px solid #eee', borderRadius: 8 }}>
-            <h2 style={{fontSize:18}}>Draw your theme (anonymous)</h2>
+            <h2 style={{fontSize:18}}>Draw your theme!</h2>
             {remainingCount <= 0 ? (
               <>
                 {lastPick ? (
@@ -240,8 +240,8 @@ export default function Home() {
                         if (!enc) return
                         const curUrl = `${window.location.origin}${window.location.pathname}?state=${enc}`
                         copyToClipboard(curUrl)
-                      }}>Copy current link</button>
-                      <span style={{ marginLeft: 10, opacity:0.8 }}>{copied ? 'Link copied!' : 'Click to copy current link'}</span>
+                      }}>Copy Link</button>
+                      <span style={{ marginLeft: 10, opacity:0.8 }}>{copied ? 'Link copied!' : 'Click to copy link'}</span>
                     </div>
                   </div>
                 ) : (
@@ -252,7 +252,8 @@ export default function Home() {
               </>
             ) : (
               <>
-                <p>Click the button below to draw one anonymous, unique theme. The updated share link will be copied automatically for the next person.</p>
+                <p>Click the button below to draw one anonymous unique theme.</p>
+                <p>Then, copy the link for the next person.</p>
                 <div style={{display:'flex', gap:12, alignItems:'center'}}>
                   <button onClick={drawOne} disabled={busy} style={{ padding:'10px 14px', borderRadius:8 }}>Draw</button>
                   <div style={{opacity:0.9}}>
