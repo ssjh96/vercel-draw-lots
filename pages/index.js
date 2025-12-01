@@ -234,7 +234,7 @@ export default function Home() {
                     <div style={{ marginTop:8, opacity:0.9 }}>
                       <em>All themes have been drawn — the game is finished.</em>
                     </div>
-                    <div style={{ marginTop:8 }}>
+                    {/* <div style={{ marginTop:8 }}>
                       <button onClick={() => {
                         const enc = router.query.state
                         if (!enc) return
@@ -242,7 +242,7 @@ export default function Home() {
                         copyToClipboard(curUrl)
                       }}>Copy Link</button>
                       <span style={{ marginLeft: 10, opacity:0.8 }}>{copied ? 'Link copied!' : 'Click to copy link'}</span>
-                    </div>
+                    </div> */}
                   </div>
                 ) : (
                   <div>
@@ -271,8 +271,8 @@ export default function Home() {
                         if (!enc) return
                         const curUrl = `${window.location.origin}${window.location.pathname}?state=${enc}`
                         copyToClipboard(curUrl) // Manual copy to clipboard
-                      }}>Copy current link</button>
-                      <span style={{ marginLeft: 10, opacity:0.8 }}>{copied ? 'Link copied!' : 'Click to copy current link'}</span>
+                      }}>Copy Link</button>
+                      <span style={{ marginLeft: 10, opacity:0.8 }}>{copied ? 'Link copied!' : 'Click to copy link for next person'}</span>
                     </div>
                   </div>
                 )}
