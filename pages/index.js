@@ -1,0 +1,192 @@
+import { useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/router'
+import { nanoid } from 'nanoid'
+
+// --- Helpers: base64url encode/decode (browser-safe) ---
+function base64UrlEncode(str) {
+  try {
+    // btoa with unicode-safe conversion
+    const b64 = btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (_, p1) =>
+      String.fromCharCode('0x' + p1)
+    ))
+    return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+  } catch (e) {
+    return ''
+  }
+}
+function base64UrlDecode(s) {
+  try {
+    if (!s) return null
+    s = s.replace(/-/g, '+').replace(/_/g, '/')
+    // pad
+    while (s.length % 4) s += '='
+    const str = atob(s)
+    // decode percent-encoded bytes back into string
+    return decodeURIComponent(Array.prototype.map.call(str, ch =>
+      '%' + ('00' + ch.charCodeAt(0).toString(16)).slice(-2)
+    ).join(''))
+  } catch (e) {
+    return null
+  }
+}
+function encodeState(obj) {
+  try {
+    return base64UrlEncode(JSON.stringify(obj))
+  } catch {
+    return ''
+  }
+}
+function decodeState(s) {
+  try {
+    const json = base64UrlDecode(s)
+    if (!json) return null
+    return JSON.parse(json)
+  } catch {
+    return null
+  }
+}
+
+function randomPick(arr) {
+  if (!arr || arr.length === 0) return null
+  const i = Math.floor(Math.random() * arr.length)
+  return { item: arr[i], index: i }
+}
+
+// --- Hardcoded 9 themes you requested (host view uses these to create the initial link) ---
+const DEFAULT_THEMES = [
+  'Basketball',
+  'Baseball',
+  'Swimming',
+  'Golf',
+  'Gym',
+  'Badminton',
+  'Cycling',
+  'Soccer',
+  'Fencing'
+]
+
+export default function Home() {
+  const router = useRouter()
+  const { state: stateParam } = router.query
+
+  // local ephemeral session id used for item IDs
+  const [session] = useState(() => ({ id: nanoid(), createdAt: Date.now() }))
+  const decoded = useMemo(() => decodeState(stateParam), [stateParam])
+
+  // decoded state shape: { id, items: [{id,label}], meta }
+  const items = decoded?.items ?? []
+
+  // UI state
+  const [lastPick, setLastPick] = useState(null)
+  const [copied, setCopied] = useState(false)
+  const [busy, setBusy] = useState(false)  // prevent double draws
+  useEffect(() => {
+    if (!copied) return
+    const t = setTimeout(() => setCopied(false), 1800)
+    return () => clearTimeout(t)
+  }, [copied])
+
+  function copyToClipboard(text) {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(() => setCopied(true)).catch(() => {
+        const ta = document.createElement('textarea')
+        ta.value = text
+        document.body.appendChild(ta)
+        ta.select()
+        document.execCommand('copy')
+        document.body.removeChild(ta)
+        setCopied(true)
+      })
+    }
+  }
+
+  // Host: create initial encoded link using DEFAULT_THEMES
+  function createInitialLink() {
+    const items = DEFAULT_THEMES.map((label, idx) => ({ id: `${session.id}-${idx}`, label }))
+    const payload = { id: session.id, items, meta: { createdAt: Date.now() } }
+    const enc = encodeState(payload)
+    if (!enc) return alert('Failed to encode state in this browser.')
+    const url = `${window.location.origin}${window.location.pathname}?state=${enc}`
+    copyToClipboard(url)
+    router.push(`/?state=${enc}`, undefined, { shallow: true })
+  }
+
+  async function drawOne() {
+    if (busy || !items || items.length === 0) return
+    setBusy(true)
+    const { item, index } = randomPick(items)
+    setLastPick(item)
+
+    const newItems = items.filter((_, i) => i !== index)
+    const newState = { id: decoded?.id ?? session.id, items: newItems, meta: decoded?.meta ?? {} }
+    const enc = encodeState(newState)
+    const newUrl = `${window.location.origin}${window.location.pathname}?state=${enc}`
+
+    await router.push(`/?state=${enc}`, undefined, { shallow: true })
+    copyToClipboard(newUrl)
+    setBusy(false)
+  }
+
+  function resetToHost() {
+    // clear state -> host mode (create new link)
+    router.push(window.location.pathname, undefined, { shallow: true })
+  }
+
+  const isHostMode = !stateParam // show host controls when no state present
+  const remainingCount = items.length
+
+  return (
+    <div style={{ fontFamily: 'Inter, system-ui, sans-serif', padding: 24, maxWidth: 820, margin: '0 auto' }}>
+      <h1 style={{fontSize: 28}}>Best-dressed theme — anonymous draw</h1>
+
+      {isHostMode ? (
+        <section style={{ marginTop: 20, padding: 12, border: '1px solid #eee', borderRadius: 8 }}>
+          <h2 style={{fontSize:18}}>Create link for the group (host)</h2>
+          <p>9 themes (sports) will be used. Click "Create link" and share the copied link with participants.</p>
+          <ul>
+            {DEFAULT_THEMES.map((t,i) => <li key={i}>{t}</li>)}
+          </ul>
+          <div style={{ marginTop: 10 }}>
+            <button onClick={createInitialLink} style={{ padding: '8px 12px', borderRadius:6 }}>Create link & copy</button>
+            <span style={{ marginLeft: 12, opacity: 0.8 }}>{copied ? 'Link copied!' : 'Click to create & copy link'}</span>
+          </div>
+        </section>
+      ) : (
+        <section style={{ marginTop: 20, padding: 12, border: '1px solid #eee', borderRadius: 8 }}>
+          <h2 style={{fontSize:18}}>Draw your theme (anonymous)</h2>
+          {remainingCount <= 0 ? (
+            <div>
+              <em>All themes have been drawn — the game is finished.</em>
+            </div>
+          ) : (
+            <>
+              <p>Click the button below to draw one anonymous, unique theme. The updated share link will be copied automatically for the next person.</p>
+              <div style={{display:'flex', gap:12, alignItems:'center'}}>
+                <button onClick={drawOne} disabled={busy} style={{ padding:'10px 14px', borderRadius:8 }}>Draw</button>
+                <div style={{opacity:0.9}}>
+                  Remaining slots: <strong>{remainingCount}</strong>
+                </div>
+              </div>
+
+              {lastPick && (
+                <div style={{ marginTop: 14, padding:12, background:'#f7fff7', border:'1px solid #dff5df', borderRadius:8 }}>
+                  <div style={{fontSize:14, opacity:0.85}}>You were assigned:</div>
+                  <div style={{ fontSize:20, marginTop:6, fontWeight:600 }}>{lastPick.label}</div>
+                  <div style={{ marginTop:8 }}>
+                    <button onClick={() => {
+                      const enc = router.query.state
+                      if (!enc) return
+                      const curUrl = `${window.location.origin}${window.location.pathname}?state=${enc}`
+                      copyToClipboard(curUrl)
+                    }}>Copy current link</button>
+                    <span style={{ marginLeft: 10, opacity:0.8 }}>{copied ? 'Link copied!' : 'Click to copy current link'}</span>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </section>
+      )}
+    </div>
+  )
+}
