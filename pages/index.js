@@ -29,27 +29,50 @@ function base64UrlDecode(s) {
     return null
   }
 }
+
+// New compact encoding:
+// - For fixed DEFAULT_THEMES we encode remaining as a 9-bit mask in base36: "m<maskBase36>".
+// - Optionally add a short timestamp after ".t<timeBase36>" for debugging/visibility.
+// - Backwards compatible with original base64 JSON state.
 function encodeState(obj) {
+  // object with explicit mask uses compact format
+  if (typeof obj?.mask === 'number') {
+    const maskStr = obj.mask.toString(36)
+    const time = obj.meta?.createdAt ? Math.floor(obj.meta.createdAt / 1000).toString(36) : ''
+    return `m${maskStr}${time ? '.t' + time : ''}`
+  }
+  // fallback: JSON base64 url
   try {
     return base64UrlEncode(JSON.stringify(obj))
   } catch {
     return ''
   }
 }
-function decodeState(s) {
-  try {
-    const json = base64UrlDecode(s)
-    if (!json) return null
-    return JSON.parse(json)
-  } catch {
-    return null
-  }
-}
 
-function randomPick(arr) {
-  if (!arr || arr.length === 0) return null
-  const i = Math.floor(Math.random() * arr.length)
-  return { item: arr[i], index: i }
+function decodeState(s) {
+  if (!s) return null
+
+  // try JSON base64 (legacy)
+  const maybeJson = base64UrlDecode(s)
+  if (maybeJson) {
+    try {
+      return JSON.parse(maybeJson)
+    } catch {}
+  }
+
+  // try compact mask format: m<maskBase36>[.t<timeBase36>]
+  const m = String(s).match(/^m([0-9a-z]+)(?:\.t([0-9a-z]+))?$/i)
+  if (m) {
+    const mask = parseInt(m[1], 36) || 0
+    const createdAt = m[2] ? parseInt(m[2], 36) * 1000 : undefined
+    // turn mask into items array consistent with previous shape
+    const items = DEFAULT_THEMES.map((label, index) =>
+      ((mask >> index) & 1) ? { id: String(index), label } : null
+    ).filter(Boolean)
+    return { mask, items, meta: { createdAt } }
+  }
+
+  return null
 }
 
 // --- Hardcoded 9 themes you requested (host view uses these to create the initial link) ---
@@ -102,8 +125,9 @@ export default function Home() {
 
   // Host: create initial encoded link using DEFAULT_THEMES
   function createInitialLink() {
-    const items = DEFAULT_THEMES.map((label, idx) => ({ id: `${session.id}-${idx}`, label }))
-    const payload = { id: session.id, items, meta: { createdAt: Date.now() } }
+    // full mask (nine 1's) -> (1<<9)-1
+    const mask = (1 << DEFAULT_THEMES.length) - 1
+    const payload = { mask, meta: { createdAt: Date.now() } }
     const enc = encodeState(payload)
     if (!enc) return alert('Failed to encode state in this browser.')
     const url = `${window.location.origin}${window.location.pathname}?state=${enc}`
@@ -112,13 +136,33 @@ export default function Home() {
   }
 
   async function drawOne() {
-    if (busy || !items || items.length === 0) return
+    if (busy || !decoded) return
     setBusy(true)
-    const { item, index } = randomPick(items)
-    setLastPick(item)
 
-    const newItems = items.filter((_, i) => i !== index)
-    const newState = { id: decoded?.id ?? session.id, items: newItems, meta: decoded?.meta ?? {} }
+    // If decoded has a mask, use mask logic; otherwise compute items (legacy)
+    const mask = typeof decoded.mask === 'number'
+      ? decoded.mask
+      : // reconstruct mask from decoded.items if legacy JSON
+        (decoded.items || DEFAULT_THEMES.map((_, i) => ({ id: i }))).reduce((acc, it, i) =>
+          (decoded.items?.some(x => x.id === String(i) || x.label === DEFAULT_THEMES[i])) ? (acc | (1 << i)) : acc
+        , 0)
+
+    // build list of available indices
+    const available = []
+    for (let i = 0; i < DEFAULT_THEMES.length; i++) {
+      if ((mask >> i) & 1) available.push(i)
+    }
+    if (available.length === 0) {
+      setBusy(false)
+      return
+    }
+
+    const idx = available[Math.floor(Math.random() * available.length)]
+    const pickLabel = DEFAULT_THEMES[idx]
+    setLastPick({ label: pickLabel })
+
+    const newMask = mask & ~(1 << idx)
+    const newState = { mask: newMask, meta: decoded?.meta ?? { createdAt: Date.now() } }
     const enc = encodeState(newState)
     const newUrl = `${window.location.origin}${window.location.pathname}?state=${enc}`
 
