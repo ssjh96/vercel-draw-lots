@@ -180,78 +180,107 @@ export default function Home() {
   const remainingCount = items.length
 
   return (
-    <div style={{ fontFamily: 'Inter, system-ui, sans-serif', padding: 24, maxWidth: 820, margin: '0 auto' }}>
-      <h1 style={{fontSize: 28}}>Best-dressed theme — anonymous draw</h1>
+    <div style={{ position: 'relative', minHeight: '100vh', fontFamily: 'Inter, system-ui, sans-serif' }}>
+      {/* full-screen background image (from /public/sports.png) */}
+      <div
+        aria-hidden
+        style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundImage: "url('/images/sports.png')",
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          zIndex: -1,
+          filter: 'brightness(0.85)'
+        }}
+      />
 
-      {isHostMode ? (
-        <section style={{ marginTop: 20, padding: 12, border: '1px solid #eee', borderRadius: 8 }}>
-          <h2 style={{fontSize:18}}>Create link for the group (host)</h2>
-          <p>9 themes (sports) will be used. Click "Create link" and share the copied link with participants.</p>
-          <ul>
-            {DEFAULT_THEMES.map((t,i) => <li key={i}>{t}</li>)}
-          </ul>
-          <div style={{ marginTop: 10 }}>
-            <button onClick={createInitialLink} style={{ padding: '8px 12px', borderRadius:6 }}>Create link & copy</button>
-            <span style={{ marginLeft: 12, opacity: 0.8 }}>{copied ? 'Link copied!' : 'Click to create & copy link'}</span>
-          </div>
-        </section>
-      ) : (
-        <section style={{ marginTop: 20, padding: 12, border: '1px solid #eee', borderRadius: 8 }}>
-          <h2 style={{fontSize:18}}>Draw your theme (anonymous)</h2>
-          {remainingCount <= 0 ? (
-            <>
-              {lastPick ? (
-                <div style={{ marginTop: 14, padding:12, background:'#f7fff7', border:'1px solid #dff5df', borderRadius:8 }}>
-                  <div style={{fontSize:14, opacity:0.85}}>You were assigned:</div>
-                  <div style={{ fontSize:20, marginTop:6, fontWeight:600 }}>{lastPick.label}</div>
-                  <div style={{ marginTop:8, opacity:0.9 }}>
+      {/* centered frosted panel */}
+      <div
+        style={{
+          padding: 24,
+          maxWidth: 820,
+          margin: '48px auto',
+          borderRadius: 12,
+          background: 'rgba(255,255,255,0.62)',           // semi-transparent so backdrop-filter shows
+          WebkitBackdropFilter: 'blur(6px)',              // Safari
+          backdropFilter: 'blur(6px)',                    // the frosted blur
+          boxShadow: '0 6px 30px rgba(16,24,40,0.18)',
+        }}
+      >
+        <h1 style={{fontSize: 28}}>Best-dressed theme — anonymous draw</h1>
+
+        {isHostMode ? (
+          <section style={{ marginTop: 20, padding: 12, border: '1px solid #eee', borderRadius: 8 }}>
+            <h2 style={{fontSize:18}}>Create link for the group (host)</h2>
+            <p>9 themes (sports) will be used. Click "Create link" and share the copied link with participants.</p>
+            <ul>
+              {DEFAULT_THEMES.map((t,i) => <li key={i}>{t}</li>)}
+            </ul>
+            <div style={{ marginTop: 10 }}>
+              <button onClick={createInitialLink} style={{ padding: '8px 12px', borderRadius:6 }}>Create link & copy</button>
+              <span style={{ marginLeft: 12, opacity: 0.8 }}>{copied ? 'Link copied!' : 'Click to create & copy link'}</span>
+            </div>
+          </section>
+        ) : (
+          <section style={{ marginTop: 20, padding: 12, border: '1px solid #eee', borderRadius: 8 }}>
+            <h2 style={{fontSize:18}}>Draw your theme (anonymous)</h2>
+            {remainingCount <= 0 ? (
+              <>
+                {lastPick ? (
+                  <div style={{ marginTop: 14, padding:12, background:'#f7fff7', border:'1px solid #dff5df', borderRadius:8 }}>
+                    <div style={{fontSize:14, opacity:0.85}}>You were assigned:</div>
+                    <div style={{ fontSize:20, marginTop:6, fontWeight:600 }}>{lastPick.label}</div>
+                    <div style={{ marginTop:8, opacity:0.9 }}>
+                      <em>All themes have been drawn — the game is finished.</em>
+                    </div>
+                    <div style={{ marginTop:8 }}>
+                      <button onClick={() => {
+                        const enc = router.query.state
+                        if (!enc) return
+                        const curUrl = `${window.location.origin}${window.location.pathname}?state=${enc}`
+                        copyToClipboard(curUrl)
+                      }}>Copy current link</button>
+                      <span style={{ marginLeft: 10, opacity:0.8 }}>{copied ? 'Link copied!' : 'Click to copy current link'}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
                     <em>All themes have been drawn — the game is finished.</em>
                   </div>
-                  <div style={{ marginTop:8 }}>
-                    <button onClick={() => {
-                      const enc = router.query.state
-                      if (!enc) return
-                      const curUrl = `${window.location.origin}${window.location.pathname}?state=${enc}`
-                      copyToClipboard(curUrl)
-                    }}>Copy current link</button>
-                    <span style={{ marginLeft: 10, opacity:0.8 }}>{copied ? 'Link copied!' : 'Click to copy current link'}</span>
+                )}
+              </>
+            ) : (
+              <>
+                <p>Click the button below to draw one anonymous, unique theme. The updated share link will be copied automatically for the next person.</p>
+                <div style={{display:'flex', gap:12, alignItems:'center'}}>
+                  <button onClick={drawOne} disabled={busy} style={{ padding:'10px 14px', borderRadius:8 }}>Draw</button>
+                  <div style={{opacity:0.9}}>
+                    Remaining slots: <strong>{remainingCount}</strong>
                   </div>
                 </div>
-              ) : (
-                <div>
-                  <em>All themes have been drawn — the game is finished.</em>
-                </div>
-              )}
-            </>
-          ) : (
-            <>
-              <p>Click the button below to draw one anonymous, unique theme. The updated share link will be copied automatically for the next person.</p>
-              <div style={{display:'flex', gap:12, alignItems:'center'}}>
-                <button onClick={drawOne} disabled={busy} style={{ padding:'10px 14px', borderRadius:8 }}>Draw</button>
-                <div style={{opacity:0.9}}>
-                  Remaining slots: <strong>{remainingCount}</strong>
-                </div>
-              </div>
 
-              {lastPick && (
-                <div style={{ marginTop: 14, padding:12, background:'#f7fff7', border:'1px solid #dff5df', borderRadius:8 }}>
-                  <div style={{fontSize:14, opacity:0.85}}>You were assigned:</div>
-                  <div style={{ fontSize:20, marginTop:6, fontWeight:600 }}>{lastPick.label}</div>
-                  <div style={{ marginTop:8 }}>
-                    <button onClick={() => {
-                      const enc = router.query.state
-                      if (!enc) return
-                      const curUrl = `${window.location.origin}${window.location.pathname}?state=${enc}`
-                      copyToClipboard(curUrl)
-                    }}>Copy current link</button>
-                    <span style={{ marginLeft: 10, opacity:0.8 }}>{copied ? 'Link copied!' : 'Click to copy current link'}</span>
+                {lastPick && (
+                  <div style={{ marginTop: 14, padding:12, background:'#f7fff7', border:'1px solid #dff5df', borderRadius:8 }}>
+                    <div style={{fontSize:14, opacity:0.85}}>You were assigned:</div>
+                    <div style={{ fontSize:20, marginTop:6, fontWeight:600 }}>{lastPick.label}</div>
+                    <div style={{ marginTop:8 }}>
+                      <button onClick={() => {
+                        const enc = router.query.state
+                        if (!enc) return
+                        const curUrl = `${window.location.origin}${window.location.pathname}?state=${enc}`
+                        copyToClipboard(curUrl)
+                      }}>Copy current link</button>
+                      <span style={{ marginLeft: 10, opacity:0.8 }}>{copied ? 'Link copied!' : 'Click to copy current link'}</span>
+                    </div>
                   </div>
-                </div>
-              )}
-            </>
-          )}
-        </section>
-      )}
+                )}
+              </>
+            )}
+          </section>
+        )}
+      </div>
     </div>
   )
 }
