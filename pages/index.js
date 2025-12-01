@@ -155,9 +155,30 @@ export default function Home() {
         <section style={{ marginTop: 20, padding: 12, border: '1px solid #eee', borderRadius: 8 }}>
           <h2 style={{fontSize:18}}>Draw your theme (anonymous)</h2>
           {remainingCount <= 0 ? (
-            <div>
-              <em>All themes have been drawn — the game is finished.</em>
-            </div>
+            <>
+              {lastPick ? (
+                <div style={{ marginTop: 14, padding:12, background:'#f7fff7', border:'1px solid #dff5df', borderRadius:8 }}>
+                  <div style={{fontSize:14, opacity:0.85}}>You were assigned:</div>
+                  <div style={{ fontSize:20, marginTop:6, fontWeight:600 }}>{lastPick.label}</div>
+                  <div style={{ marginTop:8, opacity:0.9 }}>
+                    <em>All themes have been drawn — the game is finished.</em>
+                  </div>
+                  <div style={{ marginTop:8 }}>
+                    <button onClick={() => {
+                      const enc = router.query.state
+                      if (!enc) return
+                      const curUrl = `${window.location.origin}${window.location.pathname}?state=${enc}`
+                      copyToClipboard(curUrl)
+                    }}>Copy current link</button>
+                    <span style={{ marginLeft: 10, opacity:0.8 }}>{copied ? 'Link copied!' : 'Click to copy current link'}</span>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <em>All themes have been drawn — the game is finished.</em>
+                </div>
+              )}
+            </>
           ) : (
             <>
               <p>Click the button below to draw one anonymous, unique theme. The updated share link will be copied automatically for the next person.</p>
